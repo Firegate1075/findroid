@@ -1,6 +1,8 @@
-package dev.jdtech.jellyfin.player.local.services
+package dev.jdtech.jellyfin.services
 
 import android.app.Application
+import android.app.PendingIntent
+import android.content.Intent
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Player
@@ -11,6 +13,7 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSessionService
 import dagger.hilt.android.AndroidEntryPoint
+import dev.jdtech.jellyfin.PlayerActivity
 import dev.jdtech.jellyfin.player.local.mpv.MPVPlayer
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import javax.inject.Inject
@@ -81,7 +84,15 @@ class PlaybackService : MediaSessionService() {
                     .setPauseAtEndOfMediaItems(true)
                     .build()
         }
-        mediaSession = MediaSession.Builder(this, player).build()
+        mediaSession = MediaSession.Builder(this, player)
+            .setSessionActivity(
+                PendingIntent.getActivity(
+                    this,
+                    0,
+                    Intent(this, PlayerActivity::class.java),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+            )
+            .build()
     }
 
     // Remember to release the player and media session in onDestroy

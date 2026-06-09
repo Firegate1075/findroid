@@ -30,7 +30,6 @@ import dev.jdtech.jellyfin.player.local.R
 import dev.jdtech.jellyfin.player.local.domain.PlaylistManager
 import dev.jdtech.jellyfin.player.local.mpv.MPVPlayer
 import dev.jdtech.jellyfin.repository.JellyfinRepository
-import dev.jdtech.jellyfin.player.local.services.PlaybackService
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import dev.jdtech.jellyfin.settings.domain.Constants
 import java.util.UUID

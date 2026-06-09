@@ -54,7 +54,7 @@
         </receiver>
 
         <service
-            android:name=".player.local.services.PlaybackService"
+            android:name=".services.PlaybackService"
             android:foregroundServiceType="mediaPlayback"
             android:exported="true">
             <intent-filter>
