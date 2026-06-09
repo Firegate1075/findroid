@@ -1,5 +1,6 @@
 package dev.jdtech.jellyfin
 
+import android.content.ComponentName
 import android.os.Bundle
 import android.view.View
 import android.view.WindowManager
@@ -8,27 +9,56 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.updatePadding
-import androidx.media3.session.MediaSession
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.MoreExecutors
+import dagger.hilt.android.AndroidEntryPoint
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
+import dev.jdtech.jellyfin.services.PlaybackService
+import dev.jdtech.jellyfin.settings.domain.AppPreferences
+import timber.log.Timber
+import javax.inject.Inject
 
+@AndroidEntryPoint
 abstract class BasePlayerActivity : AppCompatActivity() {
 
+    @Inject lateinit var appPreferences: AppPreferences
     abstract val viewModel: PlayerViewModel
+
+    lateinit var controller: MediaController
+    lateinit var controllerFuture: ListenableFuture<MediaController>
 
     private var wasPip: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        val sessionToken = SessionToken(application, ComponentName(application, PlaybackService::class.java))
+        controllerFuture = MediaController.Builder(application, sessionToken).buildAsync()
+        controllerFuture.addListener(
+            {
+                controller = controllerFuture.get()
+            },
+            MoreExecutors.directExecutor(),
+        )
     }
 
     override fun onResume() {
         super.onResume()
 
+        Timber.d("resuming")
+
+
         if (wasPip) {
             wasPip = false
         } else {
-            //viewModel.player.playWhenReady = viewModel.playWhenReady
+            controllerFuture.addListener(
+                {
+                    controllerFuture.get().playWhenReady = viewModel.playWhenReady
+                },
+                MoreExecutors.directExecutor()
+            )
         }
         hideSystemUI()
     }
@@ -39,9 +69,17 @@ abstract class BasePlayerActivity : AppCompatActivity() {
         if (isInPictureInPictureMode) {
             wasPip = true
         } else {
-            //viewModel.playWhenReady = viewModel.player.playWhenReady
-            //viewModel.player.playWhenReady = false
-            //viewModel.updatePlaybackProgress()
+            controllerFuture.addListener(
+                {
+                    // pause the playback if background playback is disabled
+                    if (!appPreferences.getValue(appPreferences.playerBackgroundPlaybackAutomatic)) {
+                        viewModel.playWhenReady = controllerFuture.get().playWhenReady
+                        controllerFuture.get().playWhenReady = false
+                        viewModel.updatePlaybackProgress()
+                    }
+                },
+                MoreExecutors.directExecutor()
+            )
         }
     }
 

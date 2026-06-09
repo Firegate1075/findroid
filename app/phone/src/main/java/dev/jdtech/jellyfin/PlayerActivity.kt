@@ -2,7 +2,6 @@ package dev.jdtech.jellyfin
 
 import android.app.AppOpsManager
 import android.app.PictureInPictureParams
-import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
@@ -32,8 +31,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.media3.common.C
 import androidx.media3.common.Player
-import androidx.media3.session.MediaController
-import androidx.media3.session.SessionToken
 import androidx.media3.ui.DefaultTimeBar
 import androidx.media3.ui.PlayerControlView
 import androidx.media3.ui.PlayerView
@@ -42,7 +39,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import dev.jdtech.jellyfin.databinding.ActivityPlayerBinding
 import dev.jdtech.jellyfin.player.local.presentation.PlayerEvents
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
-import dev.jdtech.jellyfin.player.local.services.PlaybackService
 import dev.jdtech.jellyfin.presentation.player.SpeedSelectionDialogFragment
 import dev.jdtech.jellyfin.presentation.player.TrackSelectionDialogFragment
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
@@ -56,13 +52,7 @@ import timber.log.Timber
 
 var isControlsLocked: Boolean = false
 
-@AndroidEntryPoint
 class PlayerActivity : BasePlayerActivity() {
-
-    @Inject lateinit var appPreferences: AppPreferences
-
-    private lateinit var player: Player
-
     lateinit var binding: ActivityPlayerBinding
     private var playerGestureHelper: PlayerGestureHelper? = null
     override val viewModel: PlayerViewModel by viewModels()
@@ -102,15 +92,14 @@ class PlayerActivity : BasePlayerActivity() {
         setContentView(binding.root)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        val sessionToken = SessionToken(application, ComponentName(application, PlaybackService::class.java))
-        val controllerFuture = MediaController.Builder(application, sessionToken).buildAsync()
         controllerFuture.addListener(
             {
-                player = controllerFuture.get()
-                binding.playerView.player = player
-                viewModel.player = player
-                initPlayer()
-                player.playWhenReady = viewModel.playWhenReady
+                val controller = controllerFuture.get()
+                // bind the player to the UI
+                binding.playerView.player = controller
+                // set the player in the viewmodel. MediaController implements the Player interface
+                viewModel.player = controller
+                initializePlayer()
             },
             MoreExecutors.directExecutor(),
         )
@@ -255,7 +244,7 @@ class PlayerActivity : BasePlayerActivity() {
 
                 launch {
                     while (true) {
-                        //viewModel.updatePlaybackProgress()
+                        // TODO: viewModel.updatePlaybackProgress()
                         delay(5000L)
                     }
                 }
@@ -333,7 +322,7 @@ class PlayerActivity : BasePlayerActivity() {
         hideSystemUI()
     }
 
-    fun initPlayer() {
+    private fun initializePlayer() {
         val itemId = UUID.fromString(intent.extras!!.getString("itemId"))
         val itemKind = intent.extras!!.getString("itemKind")
         val startFromBeginning = intent.extras!!.getBoolean("startFromBeginning")
@@ -391,6 +380,10 @@ class PlayerActivity : BasePlayerActivity() {
         } catch (e: Exception) {
             Timber.e(e)
         }
+        // stop the playback
+        viewModel.updatePlaybackProgress()
+        controller.clearMediaItems()
+
         handler.removeCallbacks(skipButtonTimeout)
         finish()
     }
