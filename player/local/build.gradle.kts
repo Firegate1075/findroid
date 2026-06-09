@@ -24,6 +24,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.media3.session)
     implementation(projects.player.core)
     implementation(projects.data)
     implementation(projects.settings)
