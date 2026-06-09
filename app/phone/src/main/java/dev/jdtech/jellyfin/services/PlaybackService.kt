@@ -20,6 +20,7 @@ import dev.jdtech.jellyfin.settings.domain.AppPreferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.internal.wait
 import timber.log.Timber
@@ -105,6 +106,13 @@ class PlaybackService : MediaSessionService() {
                     PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
             )
             .build()
+
+        scope.launch {
+            while (true) {
+                updatePlaybackProgress()
+                delay(5000L)
+            }
+        }
     }
 
     // Remember to release the player and media session in onDestroy

@@ -242,13 +242,6 @@ class PlayerActivity : BasePlayerActivity() {
                     }
                 }
 
-                launch {
-                    while (true) {
-                        // TODO: viewModel.updatePlaybackProgress()
-                        delay(5000L)
-                    }
-                }
-
                 if (
                     appPreferences.getValue(appPreferences.playerMediaSegmentsSkipButton) ||
                         appPreferences.getValue(appPreferences.playerMediaSegmentsAutoSkip)
