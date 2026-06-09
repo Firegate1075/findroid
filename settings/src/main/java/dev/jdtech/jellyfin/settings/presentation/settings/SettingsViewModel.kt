@@ -528,6 +528,21 @@ class SettingsViewModel @Inject constructor(private val appPreferences: AppPrefe
                                                 )
                                             ),
                                     ),
+                                    PreferenceGroup(
+                                        nameStringResource = R.string.background_playback,
+                                        preferences =
+                                            listOf(
+                                                PreferenceSwitch(
+                                                    nameStringResource =
+                                                        R.string.background_playback_auto,
+                                                    descriptionStringRes =
+                                                        R.string.background_playback_auto_summary,
+                                                    supportedDeviceTypes = listOf(DeviceType.PHONE),
+                                                    backendPreference =
+                                                        appPreferences.playerBackgroundPlaybackAutomatic,
+                                                )
+                                            ),
+                                    ),
                                 ),
                         )
                     )
