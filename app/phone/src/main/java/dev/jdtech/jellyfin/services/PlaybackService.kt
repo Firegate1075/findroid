@@ -15,14 +15,28 @@ import androidx.media3.session.MediaSessionService
 import dagger.hilt.android.AndroidEntryPoint
 import dev.jdtech.jellyfin.PlayerActivity
 import dev.jdtech.jellyfin.player.local.mpv.MPVPlayer
+import dev.jdtech.jellyfin.repository.JellyfinRepository
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import okhttp3.internal.wait
+import timber.log.Timber
+import java.util.UUID
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class PlaybackService : MediaSessionService() {
+
+    private val job = SupervisorJob()
+    private val scope = CoroutineScope(Dispatchers.IO + job)
+
+    private var player: Player? = null
     private var mediaSession: MediaSession? = null
     @Inject lateinit var appPreferences: AppPreferences
-    //@Inject lateinit var application: Application
+    @Inject lateinit var repository: JellyfinRepository
+
 
 
     // Create your Player and MediaSession in the onCreate lifecycle event
@@ -49,8 +63,6 @@ class PlaybackService : MediaSessionService() {
                 )
         )
 
-
-        val player: Player
         if (appPreferences.getValue(appPreferences.playerMpv)) {
             player =
                 MPVPlayer.Builder(application)
@@ -84,7 +96,7 @@ class PlaybackService : MediaSessionService() {
                     .setPauseAtEndOfMediaItems(true)
                     .build()
         }
-        mediaSession = MediaSession.Builder(this, player)
+        mediaSession = MediaSession.Builder(this, player!!)
             .setSessionActivity(
                 PendingIntent.getActivity(
                     this,
@@ -97,12 +109,34 @@ class PlaybackService : MediaSessionService() {
 
     // Remember to release the player and media session in onDestroy
     override fun onDestroy() {
+        updatePlaybackProgress()
         mediaSession?.run {
             player.release()
             release()
             mediaSession = null
         }
         super.onDestroy()
+    }
+
+    fun updatePlaybackProgress() {
+        Timber.d("Updating playback progress")
+        if (player?.currentMediaItem != null && player!!.currentMediaItem!!.mediaId.isNotEmpty()) {
+            val itemId = UUID.fromString(player!!.currentMediaItem!!.mediaId)
+            try {
+                val positionTicks = player!!.currentPosition.times(10000)
+                val isPaused = !player!!.isPlaying
+                // make sure that only the main thread accesses the player: https://developer.android.com/media/media3/exoplayer/hello-world?utm_source=android-studio-app&utm_medium=app#a-note-on-threading
+                scope.launch {
+                    repository.postPlaybackProgress(
+                        itemId,
+                        positionTicks,
+                        isPaused,
+                    )
+                }
+            } catch (e: Exception) {
+                Timber.e(e)
+            }
+        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
