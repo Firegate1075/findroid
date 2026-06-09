@@ -15,18 +15,11 @@ abstract class BasePlayerActivity : AppCompatActivity() {
 
     abstract val viewModel: PlayerViewModel
 
-    private lateinit var mediaSession: MediaSession
     private var wasPip: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
-    }
-
-    override fun onStart() {
-        super.onStart()
-
-        mediaSession = MediaSession.Builder(this, viewModel.player).build()
     }
 
     override fun onResume() {
@@ -35,7 +28,7 @@ abstract class BasePlayerActivity : AppCompatActivity() {
         if (wasPip) {
             wasPip = false
         } else {
-            viewModel.player.playWhenReady = viewModel.playWhenReady
+            //viewModel.player.playWhenReady = viewModel.playWhenReady
         }
         hideSystemUI()
     }
@@ -46,16 +39,14 @@ abstract class BasePlayerActivity : AppCompatActivity() {
         if (isInPictureInPictureMode) {
             wasPip = true
         } else {
-            viewModel.playWhenReady = viewModel.player.playWhenReady
-            viewModel.player.playWhenReady = false
-            viewModel.updatePlaybackProgress()
+            //viewModel.playWhenReady = viewModel.player.playWhenReady
+            //viewModel.player.playWhenReady = false
+            //viewModel.updatePlaybackProgress()
         }
     }
 
     override fun onStop() {
         super.onStop()
-
-        mediaSession.release()
 
         if (wasPip) {
             finish()

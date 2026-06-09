@@ -2,6 +2,7 @@ package dev.jdtech.jellyfin
 
 import android.app.AppOpsManager
 import android.app.PictureInPictureParams
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
@@ -30,13 +31,18 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.media3.common.C
+import androidx.media3.common.Player
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
 import androidx.media3.ui.DefaultTimeBar
 import androidx.media3.ui.PlayerControlView
 import androidx.media3.ui.PlayerView
+import com.google.common.util.concurrent.MoreExecutors
 import dagger.hilt.android.AndroidEntryPoint
 import dev.jdtech.jellyfin.databinding.ActivityPlayerBinding
 import dev.jdtech.jellyfin.player.local.presentation.PlayerEvents
 import dev.jdtech.jellyfin.player.local.presentation.PlayerViewModel
+import dev.jdtech.jellyfin.player.local.services.PlaybackService
 import dev.jdtech.jellyfin.presentation.player.SpeedSelectionDialogFragment
 import dev.jdtech.jellyfin.presentation.player.TrackSelectionDialogFragment
 import dev.jdtech.jellyfin.settings.domain.AppPreferences
@@ -54,6 +60,8 @@ var isControlsLocked: Boolean = false
 class PlayerActivity : BasePlayerActivity() {
 
     @Inject lateinit var appPreferences: AppPreferences
+
+    private lateinit var player: Player
 
     lateinit var binding: ActivityPlayerBinding
     private var playerGestureHelper: PlayerGestureHelper? = null
@@ -90,15 +98,23 @@ class PlayerActivity : BasePlayerActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val itemId = UUID.fromString(intent.extras!!.getString("itemId"))
-        val itemKind = intent.extras!!.getString("itemKind")
-        val startFromBeginning = intent.extras!!.getBoolean("startFromBeginning")
-
         binding = ActivityPlayerBinding.inflate(layoutInflater)
         setContentView(binding.root)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        binding.playerView.player = viewModel.player
+        val sessionToken = SessionToken(application, ComponentName(application, PlaybackService::class.java))
+        val controllerFuture = MediaController.Builder(application, sessionToken).buildAsync()
+        controllerFuture.addListener(
+            {
+                player = controllerFuture.get()
+                binding.playerView.player = player
+                viewModel.player = player
+                initPlayer()
+                player.playWhenReady = viewModel.playWhenReady
+            },
+            MoreExecutors.directExecutor(),
+        )
+
         binding.playerView.setControllerVisibilityListener(
             PlayerView.ControllerVisibilityListener { visibility ->
                 if (visibility == View.GONE) {
@@ -239,7 +255,7 @@ class PlayerActivity : BasePlayerActivity() {
 
                 launch {
                     while (true) {
-                        viewModel.updatePlaybackProgress()
+                        //viewModel.updatePlaybackProgress()
                         delay(5000L)
                     }
                 }
@@ -313,6 +329,15 @@ class PlayerActivity : BasePlayerActivity() {
 
         pipButton.setOnClickListener { pictureInPicture() }
 
+
+        hideSystemUI()
+    }
+
+    fun initPlayer() {
+        val itemId = UUID.fromString(intent.extras!!.getString("itemId"))
+        val itemKind = intent.extras!!.getString("itemKind")
+        val startFromBeginning = intent.extras!!.getBoolean("startFromBeginning")
+
         // Set marker color
         val timeBar = binding.playerView.findViewById<DefaultTimeBar>(R.id.exo_progress)
         timeBar.setAdMarkerColor(Color.WHITE)
@@ -329,7 +354,6 @@ class PlayerActivity : BasePlayerActivity() {
             itemKind = itemKind ?: "",
             startFromBeginning = startFromBeginning,
         )
-        hideSystemUI()
     }
 
     override fun onNewIntent(intent: Intent) {
