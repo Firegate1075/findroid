@@ -316,41 +316,52 @@ class PlayerActivity : BasePlayerActivity() {
     }
 
     private fun initializePlayer() {
-        val itemId = UUID.fromString(intent.extras!!.getString("itemId"))
-        val itemKind = intent.extras!!.getString("itemKind")
-        val startFromBeginning = intent.extras!!.getBoolean("startFromBeginning")
+        val returnToPlayback: Boolean? = intent.extras?.getBoolean("returnToPlayback")
 
-        // Set marker color
-        val timeBar = binding.playerView.findViewById<DefaultTimeBar>(R.id.exo_progress)
-        timeBar.setAdMarkerColor(Color.WHITE)
+        if (!(returnToPlayback != null && returnToPlayback)) {
+            val itemId = UUID.fromString(intent.extras!!.getString("itemId"))
+            val itemKind = intent.extras!!.getString("itemKind")
+            val startFromBeginning = intent.extras!!.getBoolean("startFromBeginning")
 
-        if (appPreferences.getValue(appPreferences.playerTrickplay)) {
-            val imagePreview = binding.playerView.findViewById<ImageView>(R.id.image_preview)
-            previewScrubListener = PreviewScrubListener(imagePreview, timeBar, viewModel.player)
+            // Set marker color
+            val timeBar = binding.playerView.findViewById<DefaultTimeBar>(R.id.exo_progress)
+            timeBar.setAdMarkerColor(Color.WHITE)
 
-            timeBar.addListener(previewScrubListener!!)
+            if (appPreferences.getValue(appPreferences.playerTrickplay)) {
+                val imagePreview = binding.playerView.findViewById<ImageView>(R.id.image_preview)
+                previewScrubListener = PreviewScrubListener(imagePreview, timeBar, viewModel.player)
+
+                timeBar.addListener(previewScrubListener!!)
+            }
+
+            viewModel.initializePlayer(
+                itemId = itemId,
+                itemKind = itemKind ?: "",
+                startFromBeginning = startFromBeginning,
+            )
         }
 
-        viewModel.initializePlayer(
-            itemId = itemId,
-            itemKind = itemKind ?: "",
-            startFromBeginning = startFromBeginning,
-        )
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
 
-        val itemId = UUID.fromString(intent.extras!!.getString("itemId"))
-        val itemKind = intent.extras!!.getString("itemKind")
-        val startFromBeginning = intent.extras!!.getBoolean("startFromBeginning")
+        val returnToPlayback: Boolean? = intent.extras?.getBoolean("returnToPlayback")
 
-        viewModel.initializePlayer(
-            itemId = itemId,
-            itemKind = itemKind ?: "",
-            startFromBeginning = startFromBeginning,
-        )
+        if (!(returnToPlayback != null && returnToPlayback)) {
+            // TODO: intent can come from notification! no itemId in that case
+            val itemId = UUID.fromString(intent.extras!!.getString("itemId"))
+            val itemKind = intent.extras!!.getString("itemKind")
+            val startFromBeginning = intent.extras!!.getBoolean("startFromBeginning")
+
+            viewModel.initializePlayer(
+                itemId = itemId,
+                itemKind = itemKind ?: "",
+                startFromBeginning = startFromBeginning,
+            )
+        }
+
     }
 
     override fun onUserLeaveHint() {
